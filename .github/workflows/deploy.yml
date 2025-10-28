@@ -1,0 +1,145 @@
+name: CI/CD Deploy to OCI
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  TF_DIR: infra
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  checkout:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.checkout.outputs.sha }}
+    steps:
+      - name: Checkout code
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+  terraform:
+    needs: checkout
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform plan -out=tfplan -input=false
+
+      - name: Terraform Apply
+        id: tfapply
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Get public IP
+        id: get_ip
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          echo "public_ip=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
+
+  build_and_push:
+    needs: [terraform]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/backend:${{ github.sha }} ./backend
+          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/backend:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/backend:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/backend:${{ github.sha }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/backend:latest
+
+      - name: Build and push frontend
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/frontend:${{ github.sha }} ./frontend
+          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/frontend:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/frontend:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/frontend:${{ github.sha }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/frontend:latest
+
+  deploy_to_vm:
+    needs: [build_and_push, terraform]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for infra (no-op)
+        run: echo "Deploying to VM..."
+
+      - name: Create docker-compose on remote
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ needs.terraform.outputs.get_ip }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          source: "docker-compose.yml"
+          target: "/opt/app/docker-compose.yml"
+
+      - name: 'Remote: pull images and start'
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ needs.terraform.outputs.get_ip }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            set -e
+            cd /opt/app
+            docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
+            docker-compose pull
+            docker-compose up -d
+            docker ps -a
+
+  notify:
+    needs: [deploy_to_vm]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Prepare status and IP
+      id: info
+      run: |
+        STATUS="${{ job.status }}"
+        echo "status=$STATUS" >> $GITHUB_OUTPUT
+        echo "public_ip=${{ needs.terraform.outputs.get_ip }}" >> $GITHUB_OUTPUT
+
+    - name: Send email (success/failure) with IP
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: ${{ secrets.SMTP_SERVER }}
+        server_port: ${{ secrets.SMTP_PORT }}
+        username: ${{ secrets.SMTP_USERNAME }}
+        password: ${{ secrets.SMTP_PASSWORD }}
+        subject: "Deployment ${{ steps.info.outputs.status }} - IP: ${{ steps.info.outputs.public_ip }}"
+        body: |
+          Deployment status: ${{ steps.info.outputs.status }}
+          Public IP: ${{ steps.info.outputs.public_ip }}
+          Repository: ${{ github.repository }}
+          Commit: ${{ github.sha }}
+        to: ${{ secrets.DESTINATION_EMAIL }}
+        from: ${{ secrets.SMTP_FROM }}
