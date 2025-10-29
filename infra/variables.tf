@@ -7,7 +7,7 @@ variable "user_ocid" {
   type        = string
 }
 variable "fingerprint" {}
-variable "private_key_path" { }
+variable "private_key_path" {}
 variable "region" {}
 
 variable "compartment_ocid" {}
@@ -15,16 +15,37 @@ variable "subnet_id" {}
 variable "availability_domain" {}
 
 variable "ubuntu_2204_image_ocid" {
-  description = "The OCID of the Ubuntu 22.04 image."
+  description = "OCID de la imagen Ubuntu 22.04"
+  type        = string
 }
 
 variable "ssh_authorized_key" {
   description = "The SSH public key for accessing the instance."
-} 
+}
 
-variable "vm_shape" { type = string default = "VM.Standard.E2.1.Micro" }
-variable "vm_ad" { type = string default = null }
-variable "vm_count" { type = number default = 1 } 
+variable "vm_shape" {
+  type    = string
+  default = "VM.Standard.E2.1.Micro"
+}
 
-variable "dockerhub_frontend_image" { type = string default = "jhonmayta/frontend:latest" }
-variable "dockerhub_backend_image" { type = string default = "jhonmayta/backend:latest" }
+variable "vm_ad" {
+  type = string
+}
+
+variable "vm_count" {
+  type    = number
+  default = 1
+}
+
+variable "dockerhub_frontend_image" {
+  type    = string
+  default = "jhonmayta/frontend:latest"
+}
+variable "dockerhub_backend_image" {
+  type    = string
+  default = "jhonmayta/backend:latest"
+}
+variable "ssh_public_key" {
+  description = "Clave pública SSH para acceder a la instancia"
+  type        = string
+}

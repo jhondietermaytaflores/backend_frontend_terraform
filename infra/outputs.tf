@@ -1,12 +1,14 @@
 output "public_ip" {
-  value = data.oci_core_vnic.primary_vnic.public_ip
-  description = "IP pública de la VM (primera)."
+  value       = oci_core_instance.vm[0].public_ip
+  description = "IP pública de la instancia creada"
 }
 
 output "vm_ocids" {
-  value = [for i in oci_core_instance.vm : i.id]
+  description = "OCIDs de las instancias"
+  value       = [for i in oci_core_instance.vm : i.id]
 }
 
 output "subnet_id" {
-  value = oci_core_subnet.subnet_public.id
+  description = "Subnet utilizada por las instancias"
+  value       = var.subnet_id
 }

@@ -53,6 +53,8 @@ jobs:
         working-directory: ${{ env.TF_DIR }}
         run: |
           echo "public_ip=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
+    outputs:
+      get_ip: ${{ steps.get_ip.outputs.public_ip }}
 
   build_and_push:
     needs: [terraform]
@@ -131,8 +133,8 @@ jobs:
     - name: Send email (success/failure) with IP
       uses: dawidd6/action-send-mail@v3
       with:
-        server_address: ${{ secrets.SMTP_SERVER }}
-        server_port: ${{ secrets.SMTP_PORT }}
+        server_address: smtp.gmail.com
+        server_port: 465
         username: ${{ secrets.SMTP_USERNAME }}
         password: ${{ secrets.SMTP_PASSWORD }}
         subject: "Deployment ${{ steps.info.outputs.status }} - IP: ${{ steps.info.outputs.public_ip }}"
