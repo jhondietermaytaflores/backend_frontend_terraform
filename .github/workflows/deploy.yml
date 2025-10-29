@@ -41,6 +41,8 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_DIR }}
+        env:
+          TF_VAR_private_key_content: ${{ secrets.OCI_PRIVATE_KEY }}
         run: terraform plan -out=tfplan -input=false
 
       - name: Terraform Apply
