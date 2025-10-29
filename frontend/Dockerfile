@@ -1,4 +1,5 @@
-FROM node:20-alpine
+# Etapa 1: build
+FROM node:20-alpine AS build
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
@@ -6,7 +7,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-
+# Etapa 2: nginx
 FROM nginx:stable-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
