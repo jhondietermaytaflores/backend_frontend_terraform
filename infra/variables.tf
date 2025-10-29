@@ -49,3 +49,9 @@ variable "ssh_public_key" {
   description = "Clave pública SSH para acceder a la instancia"
   type        = string
 }
+
+variable "private_key_content" {
+  description = "Contenido de la clave privada OCI"
+  type        = string
+  sensitive   = true
+}
