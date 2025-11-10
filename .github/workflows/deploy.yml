@@ -101,6 +101,11 @@ jobs:
       - name: Wait for infra (no-op)
         run: echo "Deploying to VM..."
 
+      - name: List files before copy
+        run: |
+          pwd
+          ls -R
+
       - name: Create docker-compose on remote
         uses: appleboy/scp-action@v0.1.7
         with:
