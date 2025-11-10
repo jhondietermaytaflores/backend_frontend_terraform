@@ -142,7 +142,7 @@ jobs:
         echo "status=$STATUS" >> $GITHUB_OUTPUT
         echo "public_ip=${{ needs.terraform.outputs.public_ip }}" >> $GITHUB_OUTPUT
 
-    - name: Send email (success/failure) with IP
+    - name: enviar email (success/failure) con IP
       uses: dawidd6/action-send-mail@v3
       with:
         server_address: smtp.gmail.com
@@ -153,7 +153,7 @@ jobs:
         body: |
           Deployment status: ${{ steps.info.outputs.status }}
           Public IP: ${{ steps.info.outputs.public_ip }}
-          Repository: ${{ github.repository }}
+          Repositorio: ${{ github.repository }}
           Commit: ${{ github.sha }}
         to: ${{ secrets.DESTINATION_EMAIL }}
         from: ${{ secrets.SMTP_FROM }}
