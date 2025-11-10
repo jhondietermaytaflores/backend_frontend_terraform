@@ -98,6 +98,10 @@ jobs:
     needs: [build_and_push, terraform]
     runs-on: ubuntu-latest
     steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4   
+
       - name: Wait for infra (no-op)
         run: echo "Deploying to VM..."
 
