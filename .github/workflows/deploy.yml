@@ -119,6 +119,16 @@ jobs:
             sleep 10
           done
 
+      - name: Create remote folder for app
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ needs.terraform.outputs.public_ip }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            mkdir -p /home/ubuntu/app
+
       - name: Create docker-compose on remote
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -127,7 +137,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           source: "docker-compose.yml"
-          target: "/opt/app/docker-compose.yml"
+          target: "/home/ubuntu/app/docker-compose.yml"
 
       - name: 'Remote: pull images and start'
         uses: appleboy/ssh-action@v0.1.8
@@ -138,7 +148,7 @@ jobs:
           port: 22
           script: |
             set -e
-            cd /opt/app
+            cd /home/ubuntu/app
             docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
             docker-compose pull
             docker-compose up -d
