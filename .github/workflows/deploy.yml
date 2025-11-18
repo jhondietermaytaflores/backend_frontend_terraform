@@ -119,6 +119,25 @@ jobs:
             sleep 10
           done
 
+      - name: Wait for Cloud-Init (Docker install)
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ needs.terraform.outputs.public_ip }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          # Timeout alto porque apt-get upgrade puede tardar
+          timeout: 10m 
+          command_timeout: 10m
+          script: |
+            echo "Esperando a que cloud_init termine la instalación de Docker..."
+            # Bucle que revisa cada 10 segundos si el archivo existe
+            while [ ! -f /home/ubuntu/cloud_init_finished ]; do
+              echo "Instalando dependencias... esperando 10s"
+              sleep 10
+            done
+            echo "Cloud-init finalizado. Docker debería estar listo."
+
       - name: Create remote folder for app
         uses: appleboy/ssh-action@v0.1.8
         with:
@@ -149,9 +168,9 @@ jobs:
           script: |
             set -e
             cd /home/ubuntu/app
-            docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
-            docker-compose pull
-            docker-compose up -d
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            docker compose pull
+            docker compose up -d
             docker ps -a
 
   notify:
