@@ -146,6 +146,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
+            rm -rf /home/ubuntu/app/docker-compose.yml
             mkdir -p /home/ubuntu/app
 
       - name: Create docker-compose on remote
@@ -156,7 +157,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           source: "docker-compose.yml"
-          target: "/home/ubuntu/app/docker-compose.yml"
+          target: "/home/ubuntu/app"
 
       - name: 'Remote: pull images and start'
         uses: appleboy/ssh-action@v0.1.8
